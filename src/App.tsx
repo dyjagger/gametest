@@ -5,7 +5,8 @@ import { MapScreen } from './components/map/MapScreen';
 import { RestScreen } from './components/screens/RestScreen';
 import { ShopScreen } from './components/screens/ShopScreen';
 import { EventScreen } from './components/screens/EventScreen';
-import { RewardScreen } from './components/screens/RewardScreen';
+import { RewardScreen } from './components/rewards/RewardScreen';
+import { SpartanTradeScreen } from './components/spartans/SpartanTradeScreen';
 import { GameOverScreen } from './components/screens/GameOverScreen';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
       {gamePhase === 'shop' && <ShopScreen />}
       {gamePhase === 'event' && <EventScreen />}
       {gamePhase === 'reward' && <RewardScreen />}
+      {gamePhase === 'spartanTrade' && <SpartanTradeScreen />}
       {gamePhase === 'gameOver' && <GameOverScreen />}
     </div>
   );

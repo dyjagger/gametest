@@ -32,19 +32,21 @@ function getNodeTypeForRow(row: number, totalRows: number, rng: RNG): NodeType {
     return NodeType.ForgeUpgrade;
   } else if (progress < 0.7) {
     // Mid game: mix of everything
-    if (roll < 0.4) return NodeType.Combat;
-    if (roll < 0.55) return NodeType.Event;
-    if (roll < 0.7) return NodeType.EliteCombat;
-    if (roll < 0.8) return NodeType.Shop;
-    if (roll < 0.9) return NodeType.Rest;
-    return NodeType.ForgeUpgrade;
+    if (roll < 0.35) return NodeType.Combat;
+    if (roll < 0.5) return NodeType.Event;
+    if (roll < 0.65) return NodeType.EliteCombat;
+    if (roll < 0.75) return NodeType.Shop;
+    if (roll < 0.85) return NodeType.Rest;
+    if (roll < 0.92) return NodeType.ForgeUpgrade;
+    return NodeType.Shrine; // Spartan Trade
   } else {
     // Late game: harder encounters, more rest/shop
-    if (roll < 0.35) return NodeType.Combat;
-    if (roll < 0.55) return NodeType.EliteCombat;
-    if (roll < 0.7) return NodeType.Rest;
-    if (roll < 0.85) return NodeType.Shop;
-    return NodeType.Event;
+    if (roll < 0.3) return NodeType.Combat;
+    if (roll < 0.5) return NodeType.EliteCombat;
+    if (roll < 0.65) return NodeType.Rest;
+    if (roll < 0.8) return NodeType.Shop;
+    if (roll < 0.9) return NodeType.Event;
+    return NodeType.Shrine; // Spartan Trade
   }
 }
 

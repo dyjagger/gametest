@@ -64,8 +64,73 @@ export function MapScreen() {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 overflow-y-auto px-8 py-4">
-        <div className="flex flex-col items-center gap-8">
+      <div className="flex-1 overflow-y-auto px-8 py-4 relative">
+        {/* SVG Overlay for Path Lines - Full viewport */}
+        <svg 
+          className="absolute top-0 left-0 w-full h-full pointer-events-none" 
+          style={{ zIndex: 1 }}
+          preserveAspectRatio="none"
+        >
+          {/* Draw lines between visited nodes */}
+          {map.nodes
+            .filter(node => node.visited)
+            .map(node => {
+              return node.connections
+                .map(connId => {
+                  const targetNode = map.nodes.find(n => n.id === connId);
+                  if (!targetNode || !targetNode.visited) return null;
+                  
+                  // Find positions in the rendered grid
+                  const fromRowIndex = rows.indexOf(node.row);
+                  const toRowIndex = rows.indexOf(targetNode.row);
+                  
+                  const fromColIndex = nodesByRow[node.row].indexOf(node);
+                  const toColIndex = nodesByRow[targetNode.row].indexOf(targetNode);
+                  
+                  // Calculate screen positions with proper spacing
+                  const rowGap = 96; // gap-8 = 32px + node height 64px
+                  const nodeSize = 64;
+                  const nodeGap = 48; // gap-12 = 48px
+                  
+                  // Y position: row index * (node size + gap) + half node size + padding
+                  const fromY = fromRowIndex * rowGap + nodeSize / 2 + 16;
+                  const toY = toRowIndex * rowGap + nodeSize / 2 + 16;
+                  
+                  // X position: calculate based on centered layout
+                  const fromRowNodeCount = nodesByRow[node.row].length;
+                  const toRowNodeCount = nodesByRow[targetNode.row].length;
+                  
+                  // Total width of row
+                  const fromRowTotalWidth = fromRowNodeCount * nodeSize + (fromRowNodeCount - 1) * nodeGap;
+                  const toRowTotalWidth = toRowNodeCount * nodeSize + (toRowNodeCount - 1) * nodeGap;
+                  
+                  // Center offset from left edge (assuming container is ~1000px wide)
+                  const containerWidth = 1000;
+                  const fromStartX = (containerWidth - fromRowTotalWidth) / 2;
+                  const toStartX = (containerWidth - toRowTotalWidth) / 2;
+                  
+                  const fromX = fromStartX + fromColIndex * (nodeSize + nodeGap) + nodeSize / 2;
+                  const toX = toStartX + toColIndex * (nodeSize + nodeGap) + nodeSize / 2;
+                  
+                  return (
+                    <line
+                      key={`${node.id}-${targetNode.id}`}
+                      x1={fromX}
+                      y1={fromY}
+                      x2={toX}
+                      y2={toY}
+                      stroke="#D4AF37"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                      opacity="0.9"
+                    />
+                  );
+                })
+                .filter(line => line !== null);
+            })}
+        </svg>
+        
+        <div className="flex flex-col items-center gap-8 relative" style={{ zIndex: 2 }}>
           {rows.map((row) => (
             <div key={row} className="flex items-center justify-center gap-12">
               {nodesByRow[row].map((node) => (

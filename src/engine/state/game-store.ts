@@ -19,6 +19,12 @@ import { generateMap } from '../map/map-generator';
 import { createSeededRng } from '../../utils/rng';
 import { createCombatEnemies } from '../../data/enemies';
 import { checkCombatEnd } from '../combat/combat-engine';
+import { 
+  applyStatusEffectsToDamage, 
+  applyStatusEffectsToBlock,
+  applyDamageToEnemy,
+  addStatusEffect,
+} from '../combat/status-effects';
 
 // -------------------- INITIAL STATES --------------------
 
@@ -96,7 +102,7 @@ interface GameStore {
   addAdamantShards: (amount: number) => void;
   spendAdamantShards: (amount: number) => boolean;
   addArtifact: (artifact: Artifact) => void;
-  addBlessing: (blessing: Blessing) => void;
+  addBlessing: (blessing: any) => void;
   selectNode: (nodeId: string) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
 }
@@ -199,6 +205,8 @@ export const useGameStore = create<GameStore>()(
         let newEnergy = state.run.player.energy - card.energyCost;
         let cardsToDraw = 0;
         
+        let newPlayerStatusEffects = [...state.run.player.statusEffects];
+        
         for (const effect of card.effects) {
           const times = effect.times || 1;
           const effectType = effect.type as string;
@@ -207,37 +215,53 @@ export const useGameStore = create<GameStore>()(
           for (let t = 0; t < times; t++) {
             switch (effectType) {
               case 'damage': {
-                const damage = effectValue;
+                const baseDamage = effectValue;
                 if (effect.target === 'allEnemies') {
                   newEnemies = newEnemies.map(enemy => {
                     if (enemy.hp <= 0) return enemy;
-                    let dmg = damage;
-                    let block = enemy.block;
-                    if (block > 0) {
-                      const blocked = Math.min(block, dmg);
-                      block -= blocked;
-                      dmg -= blocked;
-                    }
-                    return { ...enemy, hp: Math.max(0, enemy.hp - dmg), block };
+                    const result = applyDamageToEnemy(enemy, baseDamage, newPlayerStatusEffects);
+                    return { ...enemy, hp: result.newHp, block: result.newBlock };
                   });
                 } else {
                   const idx = targetIndex ?? 0;
                   if (newEnemies[idx] && newEnemies[idx].hp > 0) {
-                    let dmg = damage;
-                    let block = newEnemies[idx].block;
-                    if (block > 0) {
-                      const blocked = Math.min(block, dmg);
-                      block -= blocked;
-                      dmg -= blocked;
-                    }
-                    newEnemies[idx] = { ...newEnemies[idx], hp: Math.max(0, newEnemies[idx].hp - dmg), block };
+                    const result = applyDamageToEnemy(newEnemies[idx], baseDamage, newPlayerStatusEffects);
+                    newEnemies[idx] = { ...newEnemies[idx], hp: result.newHp, block: result.newBlock };
                   }
                 }
                 break;
               }
-              case 'block':
-                newPlayerBlock += effectValue;
+              case 'block': {
+                const blockAmount = applyStatusEffectsToBlock(effectValue, newPlayerStatusEffects);
+                newPlayerBlock += blockAmount;
                 break;
+              }
+              case 'applyStatus': {
+                if (effect.statusEffect) {
+                  if (effect.target === 'self') {
+                    newPlayerStatusEffects = addStatusEffect(
+                      newPlayerStatusEffects,
+                      effect.statusEffect,
+                      effectValue,
+                      effect.duration
+                    );
+                  } else {
+                    const idx = targetIndex ?? 0;
+                    if (newEnemies[idx]) {
+                      newEnemies[idx] = {
+                        ...newEnemies[idx],
+                        statusEffects: addStatusEffect(
+                          newEnemies[idx].statusEffects,
+                          effect.statusEffect,
+                          effectValue,
+                          effect.duration
+                        ),
+                      };
+                    }
+                  }
+                }
+                break;
+              }
               case 'heal':
                 newPlayerHp = Math.min(state.run.player.maxHp, newPlayerHp + effectValue);
                 break;
@@ -276,6 +300,7 @@ export const useGameStore = create<GameStore>()(
               energy: newEnergy,
               block: newPlayerBlock,
               hp: newPlayerHp,
+              statusEffects: newPlayerStatusEffects,
             },
             combat: {
               ...combat,
@@ -563,26 +588,45 @@ export const useGameStore = create<GameStore>()(
         const state = get();
         if (!state.run?.combat) return;
         
-        const newHand = state.run.combat.hand.map((card: CardInstance) => {
-          if (card.instanceId === cardInstanceId && !card.upgraded && card.upgradedVersion) {
-            return {
-              ...card,
-              upgraded: true,
-              name: card.name + '+',
-              description: card.upgradedVersion.description,
-              effects: card.upgradedVersion.effects,
-              energyCost: card.upgradedVersion.energyCost ?? card.energyCost,
-            };
-          }
-          return card;
-        });
+        const cardIndex = state.run.combat.hand.findIndex(c => c.instanceId === cardInstanceId);
+        if (cardIndex === -1) return;
+        
+        const card = state.run.combat.hand[cardIndex];
+        if (!card.upgradedVersion || card.upgraded) return;
+        
+        const upgradedCard: CardInstance = {
+          ...card,
+          ...card.upgradedVersion,
+          upgraded: true,
+        };
+        
+        const newHand = [...state.run.combat.hand];
+        newHand[cardIndex] = upgradedCard;
         
         set({
           run: {
             ...state.run,
-            combat: { ...state.run.combat, hand: newHand },
+            combat: {
+              ...state.run.combat,
+              hand: newHand,
+            },
           },
-          pendingUpgrade: false,
+          pendingUpgrade: false, // Automatically cancel upgrade mode after upgrading one card
+        });
+      },
+
+      addBlessing: (blessing: any) => {
+        const state = get();
+        if (!state.run) return;
+        
+        set({
+          run: {
+            ...state.run,
+            player: {
+              ...state.run.player,
+              blessings: [...state.run.player.blessings, blessing],
+            },
+          },
         });
       },
 
@@ -652,18 +696,6 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
-      addBlessing: (blessing: Blessing) => {
-        const state = get();
-        if (!state.run) return;
-        
-        set({
-          run: {
-            ...state.run,
-            player: { ...state.run.player, blessings: [...state.run.player.blessings, blessing] },
-          },
-        });
-      },
-
       selectNode: (nodeId: string) => {
         const state = get();
         if (!state.run) return;
@@ -674,17 +706,24 @@ export const useGameStore = create<GameStore>()(
         const node = state.run.map.nodes[nodeIndex];
         if (!node.available || node.visited) return;
         
-        // Mark clicked node as visited, make connected nodes available
+        // Mark clicked node as visited and update available nodes
         const newNodes = state.run.map.nodes.map((n, i) => {
+          // Mark the selected node as visited
           if (i === nodeIndex) {
             return { ...n, visited: true, available: false };
           }
-          if (node.connections.includes(n.id)) {
-            return { ...n, available: true };
-          }
-          if (n.available && !n.visited) {
+          
+          // Disable other nodes in the same row (can't go to multiple nodes in same row)
+          if (n.row === node.row && n.available && !n.visited) {
             return { ...n, available: false };
           }
+          
+          // Make all connected nodes available (this is key - don't check if already available)
+          if (node.connections.includes(n.id) && !n.visited) {
+            return { ...n, available: true };
+          }
+          
+          // Keep all other nodes as they are
           return n;
         });
         
@@ -722,7 +761,7 @@ export const useGameStore = create<GameStore>()(
             set({ gamePhase: 'event' as GamePhase }); // Use event screen for now
             break;
           case 'shrine':
-            set({ gamePhase: 'event' as GamePhase }); // Use event screen for now
+            set({ gamePhase: 'spartanTrade' as GamePhase });
             break;
           default:
             console.log(`Unknown node type: ${nodeType}`);

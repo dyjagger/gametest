@@ -5,6 +5,7 @@ import { CardDisplay } from '../cards/CardDisplay';
 import { EnemyDisplay } from './EnemyDisplay';
 import { ForgeDisplay } from './ForgeDisplay';
 import { ResourceBar } from '../ui/ResourceBar';
+import { PileViewer } from './PileViewer';
 import { CardType } from '../../types';
 
 export function CombatScreen() {
@@ -18,6 +19,7 @@ export function CombatScreen() {
   
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isTargeting, setIsTargeting] = useState(false);
+  const [pileViewerOpen, setPileViewerOpen] = useState<'draw' | 'discard' | 'exhaust' | null>(null);
 
   if (!combat || !player) {
     return <div className="h-full flex items-center justify-center text-white">Loading combat...</div>;
@@ -121,18 +123,27 @@ export function CombatScreen() {
 
         {/* Card Piles */}
         <div className="flex items-center gap-6">
-          <div className="text-center">
+          <button 
+            onClick={() => setPileViewerOpen('draw')}
+            className="text-center hover:bg-hell-red/20 px-3 py-2 rounded transition-colors cursor-pointer"
+          >
             <div className="text-spartan-bronze text-sm">Draw</div>
             <div className="text-white text-lg">📚 {combat.drawPile.length}</div>
-          </div>
-          <div className="text-center">
+          </button>
+          <button 
+            onClick={() => setPileViewerOpen('discard')}
+            className="text-center hover:bg-hell-red/20 px-3 py-2 rounded transition-colors cursor-pointer"
+          >
             <div className="text-spartan-bronze text-sm">Discard</div>
             <div className="text-white text-lg">🗑️ {combat.discardPile.length}</div>
-          </div>
-          <div className="text-center">
+          </button>
+          <button 
+            onClick={() => setPileViewerOpen('exhaust')}
+            className="text-center hover:bg-hell-red/20 px-3 py-2 rounded transition-colors cursor-pointer"
+          >
             <div className="text-spartan-bronze text-sm">Exhaust</div>
             <div className="text-white text-lg">💀 {combat.exhaustPile.length}</div>
-          </div>
+          </button>
         </div>
 
         {/* End Turn Button */}
@@ -178,6 +189,18 @@ export function CombatScreen() {
           );
         })}
       </div>
+
+      {/* Pile Viewer Modal */}
+      <PileViewer
+        isOpen={pileViewerOpen !== null}
+        onClose={() => setPileViewerOpen(null)}
+        pileType={pileViewerOpen || 'draw'}
+        cards={
+          pileViewerOpen === 'draw' ? combat.drawPile :
+          pileViewerOpen === 'discard' ? combat.discardPile :
+          combat.exhaustPile
+        }
+      />
     </div>
   );
 }

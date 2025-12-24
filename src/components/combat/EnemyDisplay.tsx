@@ -21,9 +21,38 @@ const INTENT_ICONS: Record<IntentType, string> = {
   [IntentType.Unknown]: '❓',
 };
 
+const INTENT_DESCRIPTIONS: Record<IntentType, string> = {
+  [IntentType.Attack]: 'Enemy will attack',
+  [IntentType.Defend]: 'Enemy will gain block',
+  [IntentType.Buff]: 'Enemy will buff itself',
+  [IntentType.Debuff]: 'Enemy will apply a debuff to you',
+  [IntentType.HeavyAttack]: 'Enemy will perform a heavy attack',
+  [IntentType.AttackDebuff]: 'Enemy will attack and apply a debuff',
+  [IntentType.AttackBuff]: 'Enemy will attack and buff itself',
+  [IntentType.Summon]: 'Enemy will summon allies',
+  [IntentType.Heal]: 'Enemy will heal',
+  [IntentType.Unknown]: 'Unknown intent',
+};
+
 export function EnemyDisplay({ enemy, index, isTargetable, onSelect }: EnemyDisplayProps) {
   const hpPercent = (enemy.hp / enemy.maxHp) * 100;
   const intent = enemy.currentIntent;
+  
+  const getIntentTooltip = () => {
+    if (!intent) return 'Unknown';
+    
+    let tooltip = INTENT_DESCRIPTIONS[intent.type];
+    if (intent.value) {
+      tooltip += ` for ${intent.value}`;
+      if (intent.times && intent.times > 1) {
+        tooltip += ` (${intent.times} times)`;
+      }
+    }
+    if (intent.statusEffect) {
+      tooltip += ` and apply ${intent.statusEffect}`;
+    }
+    return tooltip;
+  };
 
   return (
     <motion.div
@@ -42,7 +71,10 @@ export function EnemyDisplay({ enemy, index, isTargetable, onSelect }: EnemyDisp
       )}
 
       {/* Intent Display */}
-      <div className="mb-2 px-3 py-1 bg-hell-obsidian/80 rounded-lg border border-spartan-bronze/50">
+      <div 
+        className="mb-2 px-3 py-1 bg-hell-obsidian/80 rounded-lg border border-spartan-bronze/50 relative group cursor-help"
+        title={getIntentTooltip()}
+      >
         <span className="text-2xl">{INTENT_ICONS[intent?.type || IntentType.Unknown]}</span>
         {intent?.value && (
           <span className="ml-2 text-white font-bold">
@@ -50,6 +82,12 @@ export function EnemyDisplay({ enemy, index, isTargetable, onSelect }: EnemyDisp
             {intent.times && intent.times > 1 && ` x${intent.times}`}
           </span>
         )}
+        
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-hell-obsidian border border-divine-gold rounded-lg text-sm text-spartan-marble whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          {getIntentTooltip()}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-divine-gold"></div>
+        </div>
       </div>
 
       {/* Enemy Sprite Placeholder */}

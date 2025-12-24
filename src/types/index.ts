@@ -53,6 +53,8 @@ export enum StatusEffectType {
   DivineBlessing = 'divineBlessing',
   Sharpened = 'sharpened',
   Fortified = 'fortified',
+  Regeneration = 'regeneration',
+  Thorns = 'thorns',
   // Debuffs
   Vulnerable = 'vulnerable',
   Weak = 'weak',
@@ -60,6 +62,8 @@ export enum StatusEffectType {
   BrokenArmor = 'brokenArmor',
   Stunned = 'stunned',
   Marked = 'marked',
+  Frail = 'frail',
+  Poison = 'poison',
   // Special
   Frozen = 'frozen',
 }
@@ -223,12 +227,30 @@ export interface Artifact {
 // -------------------- SPARTAN TYPES --------------------
 
 export interface CommissionRequirement {
-  type: 'cardCount' | 'cardType' | 'cardRarity' | 'cardTag' | 'specificCard' | 'energyCostTotal' | 'upgraded';
-  value: number;
-  cardType?: CardType;
-  rarity?: Rarity;
-  tag?: string;
+  type: 'cardCount' | 'cardType' | 'cardRarity' | 'cardTags' | 'specificCard' | 'energyCostTotal' | 'upgraded';
+  count?: number;
+  cardType?: string;
+  minRarity?: string;
+  tags?: string[];
   cardId?: string;
+}
+
+export interface Blessing {
+  id: string;
+  name: string;
+  description: string;
+  effect: any; // Flexible effect structure
+}
+
+export interface SpartanCommission {
+  tier: 1 | 2 | 3;
+  requirement: CommissionRequirement;
+  reward: {
+    type: 'blessing' | 'technique';
+    blessing?: Blessing;
+    cards?: Card[];
+  };
+  description: string;
 }
 
 export interface Commission {
@@ -236,13 +258,6 @@ export interface Commission {
   description: string;
   requirements: CommissionRequirement[];
   adamantCost?: number;
-}
-
-export interface Blessing {
-  id: string;
-  name: string;
-  description: string;
-  effects: ArtifactEffect[];
 }
 
 export interface Technique {
@@ -259,14 +274,15 @@ export interface Spartan {
   id: string;
   name: string;
   title: string;
-  archetype: string;
+  description?: string;
+  archetype?: string;
   portrait?: string;
-  commissions: {
+  commissions: SpartanCommission[] | {
     tier1: Commission;
     tier2: Commission;
     tier3: Commission;
   };
-  rewards: {
+  rewards?: {
     tier1: CommissionReward;
     tier2: CommissionReward;
     tier3: CommissionReward;
@@ -308,12 +324,12 @@ export interface PlayerState {
   energy: number;
   maxEnergy: number;
   block: number;
-  statusEffects: StatusEffect[];
   deck: CardInstance[];
   artifacts: Artifact[];
   blessings: Blessing[];
   divineFavor: number;
   adamantShards: number;
+  statusEffects: StatusEffect[];
 }
 
 export interface CombatState {
