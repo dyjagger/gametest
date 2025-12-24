@@ -111,12 +111,15 @@ export function MainMenu() {
 
       {/* Version */}
       <motion.div
-        className="absolute bottom-8 right-8 text-gray-600 text-xs"
+        className="absolute bottom-8 right-8 text-spartan-bronze text-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
       >
-        v0.0.1 - Prototype
+        <div className="text-right">
+          <div className="text-divine-gold font-bold">v0.2.0</div>
+          <div className="text-xs text-gray-500">Phase 1 & 2 Complete</div>
+        </div>
       </motion.div>
     </div>
   );
